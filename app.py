@@ -1,90 +1,107 @@
 import streamlit as st
 import sqlite3
-import random
 import uuid
-import time
+import random
 import csv
 import os
+import time
 
-# ---------------- CONFIG ----------------
-st.set_page_config(page_title="QuizWhiz", layout="centered")
+st.set_page_config("QuizWhiz", layout="centered")
 
-DB_PATH = "quizwhiz.db"
-CSV_PATH = "questions.csv"
+DB = "quizwhiz.db"
+CSV_FILE = "questions.csv"
 QUESTIONS_PER_QUIZ = 5
-BASE_POINTS = 10
 
-# ---------------- DATABASE SETUP ----------------
-def get_db():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+# ---------------- DB ----------------
+def db():
+    return sqlite3.connect(DB, check_same_thread=False)
 
 def init_db():
-    conn = get_db()
-    cur = conn.cursor()
+    conn = db()
+    c = conn.cursor()
 
-    # Create table if not exists
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS questions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT,
-            option_a TEXT,
-            option_b TEXT,
-            option_c TEXT,
-            option_d TEXT,
-            correct_option TEXT
-        )
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT,
+        a TEXT, b TEXT, c TEXT, d TEXT,
+        correct TEXT
+    )
     """)
 
-    # Check if table is empty
-    cur.execute("SELECT COUNT(*) FROM questions")
-    count = cur.fetchone()[0]
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS quizzes (
+        quiz_id TEXT PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS quiz_questions (
+        quiz_id TEXT,
+        question_id INTEGER
+    )
+    """)
 
     # Load CSV only once
-    if count == 0 and os.path.exists(CSV_PATH):
-        with open(CSV_PATH, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                cur.execute("""
-                    INSERT INTO questions 
-                    (question, option_a, option_b, option_c, option_d, correct_option)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    row["question"],
-                    row["option_a"],
-                    row["option_b"],
-                    row["option_c"],
-                    row["option_d"],
-                    row["correct_option"]
-                ))
-        conn.commit()
+    c.execute("SELECT COUNT(*) FROM questions")
+    if c.fetchone()[0] == 0:
+        if not os.path.exists(CSV_FILE):
+            st.error("questions.csv missing")
+            st.stop()
 
+        with open(CSV_FILE, encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                c.execute("""
+                INSERT INTO questions
+                (question, a, b, c, d, correct)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    r["question"],
+                    r["option_a"],
+                    r["option_b"],
+                    r["option_c"],
+                    r["option_d"],
+                    r["correct_option"]
+                ))
+    conn.commit()
     conn.close()
 
-# Initialize DB safely
 init_db()
 
 # ---------------- HELPERS ----------------
-def fetch_random_questions(limit):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id, question, option_a, option_b, option_c, option_d, correct_option 
-        FROM questions
-    """)
-    rows = cur.fetchall()
+def create_quiz():
+    conn = db()
+    c = conn.cursor()
+
+    quiz_id = uuid.uuid4().hex[:6]
+    c.execute("INSERT INTO quizzes (quiz_id) VALUES (?)", (quiz_id,))
+
+    c.execute("SELECT id FROM questions ORDER BY RANDOM() LIMIT ?", (QUESTIONS_PER_QUIZ,))
+    qs = c.fetchall()
+
+    for q in qs:
+        c.execute("INSERT INTO quiz_questions VALUES (?, ?)", (quiz_id, q[0]))
+
+    conn.commit()
     conn.close()
+    return quiz_id
 
-    if not rows:
-        return []
+def load_quiz(quiz_id):
+    conn = db()
+    c = conn.cursor()
 
-    return random.sample(rows, min(limit, len(rows)))
+    c.execute("""
+    SELECT q.id, q.question, q.a, q.b, q.c, q.d, q.correct
+    FROM questions q
+    JOIN quiz_questions qq ON q.id = qq.question_id
+    WHERE qq.quiz_id = ?
+    """, (quiz_id,))
 
-# ---------------- SESSION STATE ----------------
-if "quizzes" not in st.session_state:
-    st.session_state.quizzes = {}
-
-if "responses" not in st.session_state:
-    st.session_state.responses = {}
+    data = c.fetchall()
+    conn.close()
+    return data
 
 # ---------------- UI ----------------
 st.title("🎯 QuizWhiz")
@@ -92,83 +109,37 @@ st.caption("Real-time Online Quiz Platform")
 
 quiz_id = st.query_params.get("quiz")
 
-# ---------------- CREATE QUIZ ----------------
 if not quiz_id:
     st.subheader("Create a New Quiz")
-
     if st.button("🚀 Create Quiz"):
-        questions = fetch_random_questions(QUESTIONS_PER_QUIZ)
-
-        if not questions:
-            st.error("No questions found. Check questions.csv")
-            st.stop()
-
-        quiz_id = uuid.uuid4().hex[:6]
-        st.session_state.quizzes[quiz_id] = questions
-        st.session_state.responses[quiz_id] = []
-
+        quiz_id = create_quiz()
         st.query_params["quiz"] = quiz_id
         st.success("Quiz Created!")
         st.code(f"Share this Quiz ID: {quiz_id}")
         st.stop()
 
-# ---------------- JOIN QUIZ ----------------
-if quiz_id not in st.session_state.quizzes:
+questions = load_quiz(quiz_id)
+
+if not questions:
     st.error("Quiz expired or invalid link.")
     st.stop()
-
-questions = st.session_state.quizzes[quiz_id]
 
 name = st.text_input("Enter your name")
 if not name:
     st.stop()
 
-score = 0
-start_time = time.time()
+start = time.time()
+answers = {}
 
-with st.form("quiz_form"):
-    answers = {}
+with st.form("quiz"):
     for i, q in enumerate(questions):
-        qid, question, a, b, c, d, correct = q
-        st.markdown(f"**Q{i+1}. {question}**")
-        answers[qid] = st.radio(
-            "",
+        answers[q[0]] = st.radio(
+            f"Q{i+1}. {q[1]}",
             ["A", "B", "C", "D"],
-            format_func=lambda x: {"A": a, "B": b, "C": c, "D": d}[x],
-            key=f"{quiz_id}_{qid}"
+            format_func=lambda x: {"A": q[2], "B": q[3], "C": q[4], "D": q[5]}[x]
         )
+    submit = st.form_submit_button("Submit")
 
-    submitted = st.form_submit_button("✅ Submit Quiz")
-
-# ---------------- SUBMIT ----------------
-if submitted:
-    time_taken = max(1, int(time.time() - start_time))
-
-    for q in questions:
-        if answers[q[0]] == q[6]:
-            score += BASE_POINTS
-
-    if time_taken < 30:
-        score += 2
-    elif time_taken < 60:
-        score += 1
-
-    st.session_state.responses[quiz_id].append({
-        "name": name,
-        "score": score,
-        "time": time_taken
-    })
-
-    st.success(f"🎉 Your Score: {score}")
-
-# ---------------- LEADERBOARD ----------------
-if st.session_state.responses[quiz_id]:
-    st.subheader("🏆 Leaderboard")
-
-    leaderboard = sorted(
-        st.session_state.responses[quiz_id],
-        key=lambda x: (-x["score"], x["time"])
-    )
-
-    for i, r in enumerate(leaderboard, 1):
-        st.write(f"{i}. **{r['name']}** — {r['score']} pts ⏱ {r['time']}s")
+if submit:
+    score = sum(1 for q in questions if answers[q[0]] == q[6]) * 10
+    st.success(f"🎉 Score: {score}")
