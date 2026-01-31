@@ -1,112 +1,124 @@
 import streamlit as st
 import sqlite3
-import os
-import uuid
 import random
 import time
+import uuid
+from datetime import datetime
 
-# Initialize DB
-import data.init_db as init_db
-
-# Paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(BASE_DIR, "data", "quizwhiz.db")
-
-# DB connection
-conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-cur = conn.cursor()
-
+# ---------------- CONFIG ----------------
 st.set_page_config(page_title="QuizWhiz", layout="centered")
 
-# Session state
-if "quiz_id" not in st.session_state:
-    st.session_state.quiz_id = None
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "start_time" not in st.session_state:
-    st.session_state.start_time = None
+DB_PATH = "data/quizwhiz.db"
+QUESTIONS_PER_QUIZ = 5
+BASE_POINTS = 10
 
+# ---------------- DB HELPERS ----------------
+def get_db():
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
+
+def fetch_random_questions(limit=5):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, question, option_a, option_b, option_c, option_d, correct_option FROM questions")
+    rows = cur.fetchall()
+    conn.close()
+    return random.sample(rows, min(limit, len(rows)))
+
+# ---------------- SESSION INIT ----------------
+if "quizzes" not in st.session_state:
+    st.session_state.quizzes = {}   # quiz_id -> questions
+
+if "responses" not in st.session_state:
+    st.session_state.responses = {} # quiz_id -> list of scores
+
+# ---------------- UI ----------------
 st.title("🎯 QuizWhiz")
-st.subheader("Real-time Online Quiz Platform")
+st.caption("Real-time Online Quiz Platform")
 
-menu = st.sidebar.radio("Menu", ["Create Quiz", "Join Quiz", "Leaderboard"])
+params = st.query_params
+quiz_id = params.get("quiz")
 
 # ---------------- CREATE QUIZ ----------------
-if menu == "Create Quiz":
-    st.header("🛠 Create a Quiz")
+if not quiz_id:
+    st.subheader("Create a New Quiz")
 
-    if st.button("Generate Quiz"):
-        quiz_id = str(uuid.uuid4())[:6]
-        st.session_state.quiz_id = quiz_id
-        st.success(f"Quiz Created!")
-        st.code(f"{st.experimental_get_query_params()}?quiz={quiz_id}")
+    if st.button("🚀 Create Quiz"):
+        quiz_id = uuid.uuid4().hex[:6]
+        questions = fetch_random_questions(QUESTIONS_PER_QUIZ)
 
-        st.write("📌 Share this Quiz ID:", quiz_id)
+        st.session_state.quizzes[quiz_id] = questions
+        st.session_state.responses[quiz_id] = []
+
+        st.query_params["quiz"] = quiz_id
+
+        st.success("Quiz Created!")
+        st.code(f"Quiz ID: {quiz_id}")
+        st.stop()
 
 # ---------------- JOIN QUIZ ----------------
-elif menu == "Join Quiz":
-    st.header("🚀 Join Quiz")
+st.subheader("📝 Join Quiz")
 
-    quiz_id = st.text_input("Enter Quiz ID")
-    username = st.text_input("Your Name")
+if quiz_id not in st.session_state.quizzes:
+    st.error("Quiz not found or expired.")
+    st.stop()
 
-    if st.button("Start Quiz") and quiz_id and username:
-        st.session_state.quiz_id = quiz_id
-        st.session_state.score = 0
-        st.session_state.start_time = time.time()
+questions = st.session_state.quizzes[quiz_id]
 
-        cur.execute("SELECT * FROM questions ORDER BY RANDOM() LIMIT 5")
-        questions = cur.fetchall()
+username = st.text_input("Enter your name")
 
-        for q in questions:
-            st.subheader(q[1])
-            options = {
-                "A": q[2],
-                "B": q[3],
-                "C": q[4],
-                "D": q[5]
-            }
+if not username:
+    st.stop()
 
-            user_ans = st.radio(
-                "Choose an option:",
-                options.keys(),
-                format_func=lambda x: options[x],
-                key=str(q[0])
-            )
+score = 0
+start_time = time.time()
 
-            if st.button(f"Submit Q{q[0]}"):
-                time_taken = time.time() - st.session_state.start_time
-                if user_ans == q[6]:
-                    st.session_state.score += 5 if time_taken < 10 else 3
-                    st.success("Correct!")
-                else:
-                    st.error("Wrong!")
+with st.form("quiz_form"):
+    for i, q in enumerate(questions):
+        qid, question, a, b, c, d, correct = q
 
-        # Save score
-        cur.execute(
-            "INSERT INTO scores (quiz_id, username, score) VALUES (?, ?, ?)",
-            (quiz_id, username, st.session_state.score)
+        st.markdown(f"**Q{i+1}. {question}**")
+        answer = st.radio(
+            "",
+            ["A", "B", "C", "D"],
+            format_func=lambda x: {"A": a, "B": b, "C": c, "D": d}[x],
+            key=f"{quiz_id}_{qid}"
         )
-        conn.commit()
 
-        st.success(f"Quiz Completed! Score: {st.session_state.score}")
+    submitted = st.form_submit_button("✅ Submit Quiz")
+
+# ---------------- SUBMIT ----------------
+if submitted:
+    time_taken = max(1, int(time.time() - start_time))
+
+    for i, q in enumerate(questions):
+        correct_option = q[6]
+        selected = st.session_state[f"{quiz_id}_{q[0]}"]
+
+        if selected == correct_option:
+            score += BASE_POINTS
+
+    # Speed bonus
+    if time_taken < 30:
+        score += 2
+    elif time_taken < 60:
+        score += 1
+
+    st.session_state.responses[quiz_id].append({
+        "name": username,
+        "score": score,
+        "time": time_taken
+    })
+
+    st.success(f"🎉 Quiz Submitted! Your Score: {score}")
 
 # ---------------- LEADERBOARD ----------------
-elif menu == "Leaderboard":
-    st.header("🏆 Leaderboard")
+if st.session_state.responses[quiz_id]:
+    st.subheader("🏆 Leaderboard")
 
-    quiz_id = st.text_input("Enter Quiz ID to view leaderboard")
+    leaderboard = sorted(
+        st.session_state.responses[quiz_id],
+        key=lambda x: (-x["score"], x["time"])
+    )
 
-    if quiz_id:
-        cur.execute(
-            "SELECT username, score FROM scores WHERE quiz_id=? ORDER BY score DESC",
-            (quiz_id,)
-        )
-        results = cur.fetchall()
-
-        if results:
-            for i, r in enumerate(results, 1):
-                st.write(f"#{i} {r[0]} — {r[1]} points")
-        else:
-            st.info("No results yet.")
-
+    for i, entry in enumerate(leaderboard, start=1):
+        st.write(f"{i}. **{entry['name']}** — {entry['score']} pts ⏱ {entry['time']}s")
