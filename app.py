@@ -1,157 +1,112 @@
 import streamlit as st
 import sqlite3
-import time
-from datetime import datetime
-import random
-import string
-import ui
 import os
+import uuid
+import random
+import time
 
-# ------------------------
-# Persistent DB path
-# ------------------------
-DB_FILE = "/data/quizwhiz.db"
+# Initialize DB
+import data.init_db as init_db
 
-# Create DB if missing
-if not os.path.exists(DB_FILE):
-    import init_db
+# Paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "data", "quizwhiz.db")
 
-# Connect with check_same_thread=False for multiple submissions
+# DB connection
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-cursor = conn.cursor()
+cur = conn.cursor()
 
-# ------------------------
-# Session state init
-# ------------------------
-if 'quiz_started' not in st.session_state:
-    st.session_state['quiz_started'] = False
-if 'question_index' not in st.session_state:
-    st.session_state['question_index'] = 0
-if 'score' not in st.session_state:
-    st.session_state['score'] = 0
-if 'questions' not in st.session_state:
-    st.session_state['questions'] = []
-if 'start_time' not in st.session_state:
-    st.session_state['start_time'] = 0
-if 'answer_times' not in st.session_state:
-    st.session_state['answer_times'] = []
+st.set_page_config(page_title="QuizWhiz", layout="centered")
 
-# ------------------------
-# Helper: Generate Quiz ID
-# ------------------------
-def generate_quiz_id():
-    return "QW" + ''.join(random.choices(string.digits, k=4))
+# Session state
+if "quiz_id" not in st.session_state:
+    st.session_state.quiz_id = None
+if "score" not in st.session_state:
+    st.session_state.score = 0
+if "start_time" not in st.session_state:
+    st.session_state.start_time = None
 
-# ------------------------
-# Landing / Join
-# ------------------------
-st.title("🧠 QuizWhiz - Online Quiz Platform")
+st.title("🎯 QuizWhiz")
+st.subheader("Real-time Online Quiz Platform")
 
-create_new = st.button("Create New Quiz")
-quiz_id_input = st.text_input("Or Enter Quiz Link / ID to Join")
-username = st.text_input("Enter Your Name")
+menu = st.sidebar.radio("Menu", ["Create Quiz", "Join Quiz", "Leaderboard"])
 
-if create_new:
-    if username.strip() == "":
-        st.warning("Enter name to create quiz!")
-    else:
-        quiz_id = generate_quiz_id()
-        st.success(f"Quiz created! Quiz ID: {quiz_id}")
-        st.session_state.update({
-            'quiz_started': True,
-            'username': username,
-            'quiz_id': quiz_id,
-            'question_index': 0,
-            'score': 0,
-            'answer_times': []
-        })
-        cursor.execute("SELECT * FROM questions ORDER BY RANDOM() LIMIT 10")
-        st.session_state['questions'] = cursor.fetchall()
-        st.session_state['start_time'] = time.time()
-        st.experimental_rerun()
+# ---------------- CREATE QUIZ ----------------
+if menu == "Create Quiz":
+    st.header("🛠 Create a Quiz")
 
-elif st.button("Join Quiz"):
-    if username.strip() == "" or quiz_id_input.strip() == "":
-        st.warning("Enter both name and quiz ID!")
-    else:
-        quiz_id = quiz_id_input.strip()
-        st.session_state.update({
-            'quiz_started': True,
-            'username': username,
-            'quiz_id': quiz_id,
-            'question_index': 0,
-            'score': 0,
-            'answer_times': []
-        })
-        cursor.execute("SELECT * FROM questions ORDER BY RANDOM() LIMIT 10")
-        st.session_state['questions'] = cursor.fetchall()
-        st.session_state['start_time'] = time.time()
-        st.success(f"Welcome {username}! Quiz {quiz_id} is starting...")
-        st.experimental_rerun()
+    if st.button("Generate Quiz"):
+        quiz_id = str(uuid.uuid4())[:6]
+        st.session_state.quiz_id = quiz_id
+        st.success(f"Quiz Created!")
+        st.code(f"{st.experimental_get_query_params()}?quiz={quiz_id}")
 
-# ------------------------
-# Quiz Logic
-# ------------------------
-if st.session_state['quiz_started']:
-    questions = st.session_state['questions']
-    idx = st.session_state['question_index']
+        st.write("📌 Share this Quiz ID:", quiz_id)
 
-    if idx < len(questions):
-        q = questions[idx]
-        answer, submit, shuffled_options, correct_option, question_id = ui.show_question(q, idx, st.session_state['start_time'])
+# ---------------- JOIN QUIZ ----------------
+elif menu == "Join Quiz":
+    st.header("🚀 Join Quiz")
 
-        if submit:
-            time_taken = time.time() - st.session_state['start_time']
-            st.session_state['answer_times'].append(time_taken)
+    quiz_id = st.text_input("Enter Quiz ID")
+    username = st.text_input("Your Name")
 
-            points = 0
-            if answer == correct_option:
-                points = 2 if time_taken <= 10 else 1
-            st.session_state['score'] += points
+    if st.button("Start Quiz") and quiz_id and username:
+        st.session_state.quiz_id = quiz_id
+        st.session_state.score = 0
+        st.session_state.start_time = time.time()
 
-            # Safe submissions using immediate commit
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS responses (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT,
-                    quiz_id TEXT,
-                    question_id INTEGER,
-                    answer TEXT,
-                    correct_option TEXT,
-                    score INTEGER,
-                    time_taken REAL,
-                    timestamp TEXT
-                )
-            """)
-            cursor.execute("""
-                INSERT INTO responses (username, quiz_id, question_id, answer, correct_option, score, time_taken, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                st.session_state['username'],
-                st.session_state['quiz_id'],
-                question_id,
-                answer,
-                correct_option,
-                points,
-                time_taken,
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ))
-            conn.commit()
+        cur.execute("SELECT * FROM questions ORDER BY RANDOM() LIMIT 5")
+        questions = cur.fetchall()
 
-            # Next question
-            st.session_state['start_time'] = time.time()
-            st.session_state['question_index'] += 1
-            st.experimental_rerun()
+        for q in questions:
+            st.subheader(q[1])
+            options = {
+                "A": q[2],
+                "B": q[3],
+                "C": q[4],
+                "D": q[5]
+            }
 
-    else:
-        ui.show_score(st.session_state['score'], len(questions)*2)
+            user_ans = st.radio(
+                "Choose an option:",
+                options.keys(),
+                format_func=lambda x: options[x],
+                key=str(q[0])
+            )
 
-        cursor.execute("""
-            SELECT username, SUM(score) as total_score
-            FROM responses
-            WHERE quiz_id = ?
-            GROUP BY username
-            ORDER BY total_score DESC
-        """, (st.session_state['quiz_id'],))
-        leaderboard = cursor.fetchall()
-        ui.show_leaderboard(leaderboard)
+            if st.button(f"Submit Q{q[0]}"):
+                time_taken = time.time() - st.session_state.start_time
+                if user_ans == q[6]:
+                    st.session_state.score += 5 if time_taken < 10 else 3
+                    st.success("Correct!")
+                else:
+                    st.error("Wrong!")
+
+        # Save score
+        cur.execute(
+            "INSERT INTO scores (quiz_id, username, score) VALUES (?, ?, ?)",
+            (quiz_id, username, st.session_state.score)
+        )
+        conn.commit()
+
+        st.success(f"Quiz Completed! Score: {st.session_state.score}")
+
+# ---------------- LEADERBOARD ----------------
+elif menu == "Leaderboard":
+    st.header("🏆 Leaderboard")
+
+    quiz_id = st.text_input("Enter Quiz ID to view leaderboard")
+
+    if quiz_id:
+        cur.execute(
+            "SELECT username, score FROM scores WHERE quiz_id=? ORDER BY score DESC",
+            (quiz_id,)
+        )
+        results = cur.fetchall()
+
+        if results:
+            for i, r in enumerate(results, 1):
+                st.write(f"#{i} {r[0]} — {r[1]} points")
+        else:
+            st.info("No results yet.")
+
