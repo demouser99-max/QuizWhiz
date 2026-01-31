@@ -1,0 +1,75 @@
+question,option_a,option_b,option_c,option_d,correct_option,topic,difficulty
+What is Python?,Programming Language,Snake,Operating System,Game,A,Python,Easy
+Who developed Python?,Guido van Rossum,James Gosling,Dennis Ritchie,Bjarne Stroustrup,A,Python,Easy
+Which symbol is used for comments in Python?,//,#,/*,%,B,Python,Easy
+What is the output of 2+3*2?,10,7,12,5,B,Python,Easy
+Which keyword defines a function?,function,func,def,define,C,Python,Easy
+Which data type stores text?,int,float,string,bool,C,Python,Easy
+What is the extension of Python files?,.pt,.pyt,.py,.python,C,Python,Easy
+Which keyword is used for loops?,for,loop,iterate,repeat,A,Python,Easy
+Which operator is used for power?,^,**,%,//,B,Python,Easy
+Which function prints output?,echo,print,display,show,B,Python,Easy
+What is 5//2?,2.5,3,2,4,C,Python,Easy
+Which data type is immutable?,list,set,dictionary,tuple,D,Python,Easy
+Which collection stores key-value pairs?,list,set,tuple,dictionary,D,Python,Easy
+Which keyword is used to handle exceptions?,try,catch,handle,except,A,Python,Easy
+What does len() return?,Value,Length,Type,Index,B,Python,Easy
+Which loop runs at least once?,for,while,do-while,None,D,Python,Easy
+Which symbol is used for assignment?,==,=,!=,<=,B,Python,Easy
+What is the output of bool(0)?,True,False,None,Error,B,Python,Easy
+Which keyword exits a loop?,exit,stop,break,return,C,Python,Easy
+Which function converts string to int?,int(),str(),float(),input(),A,Python,Easy
+What is the default port for HTTP?,21,22,80,443,C,Networking,Easy
+Which protocol is secure?,HTTP,FTP,SMTP,HTTPS,D,Networking,Easy
+What does CPU stand for?,Central Process Unit,Central Processing Unit,Control Processing Unit,Computer Power Unit,B,CS,Easy
+Which memory is volatile?,ROM,HDD,SSD,RAM,D,CS,Easy
+Which device is an output device?,Keyboard,Mouse,Monitor,Scanner,C,CS,Easy
+What does OS stand for?,Open System,Operating System,Order System,Optical System,B,CS,Easy
+Which language is low-level?,Python,Java,C,Assembly,D,CS,Easy
+What is 10%3?,1,2,3,0,B,Math,Easy
+Which number system uses base 2?,Decimal,Octal,Binary,Hexadecimal,C,CS,Easy
+What is the result of 3**2?,6,9,8,12,B,Python,Easy
+Which function reads input?,input(),read(),scan(),get(),A,Python,Easy
+Which keyword creates a class?,class,struct,object,define,A,Python,Easy
+Which symbol starts an index?,0,1,-1,None,A,Python,Easy
+Which method adds item to list?,add(),insert(),append(),push(),C,Python,Easy
+Which loop is infinite?,for,while(True),do,repeat,B,Python,Easy
+What does IDE stand for?,Integrated Development Environment,Internal Development Engine,Interface Design Editor,Integrated Data Environment,A,CS,Easy
+Which SQL command retrieves data?,INSERT,DELETE,UPDATE,SELECT,D,SQL,Easy
+Which SQL command removes table data?,REMOVE,DELETE,ERASE,DROP,B,SQL,Easy
+Which SQL keyword sorts results?,GROUP,ORDER,WHERE,SORT,B,SQL,Easy
+What does DBMS stand for?,Database Management System,Data Binary Management System,Digital Base Management System,Database Model System,A,SQL,Easy
+Which constraint ensures uniqueness?,PRIMARY KEY,FOREIGN KEY,NOT NULL,CHECK,A,SQL,Easy
+Which HTML tag creates a link?,<a>,<p>,<link>,<href>,A,Web,Easy
+Which HTML tag inserts image?,<img>,<image>,<pic>,<src>,A,Web,Easy
+Which CSS property changes text color?,font,color,text-color,style,B,Web,Easy
+Which JS keyword declares variable?,let,var,const,All,D,Web,Easy
+Which HTTP method sends data?,GET,POST,PUT,HEAD,B,Web,Easy
+Which symbol is used for AND?,&&,||,&,AND,A,CS,Easy
+What is the value of True and False?,True,False,None,Error,B,Python,Easy
+Which structure repeats code?,if,loop,case,break,B,CS,Easy
+Which keyword returns value?,return,break,continue,pass,A,Python,Easy
+Which list index gives last item?,0,1,-1,None,C,Python,Easy
+What does pip do?,Runs Python,Installs packages,Deletes files,Compiles code,B,Python,Easy
+Which module handles dates?,time,date,datetime,calendar,C,Python,Easy
+Which statement skips iteration?,skip,pass,continue,break,C,Python,Easy
+Which data type stores True/False?,int,str,bool,float,C,Python,Easy
+Which operator compares values?,=,==,!=,>=,B,Python,Easy
+Which SQL clause filters rows?,ORDER BY,GROUP BY,WHERE,FROM,C,SQL,Easy
+Which device stores data permanently?,RAM,Cache,ROM,Register,C,CS,Easy
+Which Python structure is ordered?,set,dict,list,file,C,Python,Easy
+What is the output of len("Hi")?,1,2,3,0,B,Python,Easy
+Which keyword creates loop condition?,if,for,while,when,C,Python,Easy
+Which file stores DB data?,.txt,.db,.csv,.exe,B,SQL,Easy
+Which Python framework is for web?,Flask,Django,Both,None,C,Python,Easy
+Which command installs Streamlit?,pip install streamlit,install streamlit,python streamlit,add streamlit,A,Python,Easy
+Which Streamlit function displays text?,st.show,st.text,st.print,st.write,D,Python,Easy
+Which Streamlit function takes input?,st.input,st.text_input,st.get,st.ask,B,Python,Easy
+Which Streamlit function shows table?,st.table,st.dataframe,both,None,C,Python,Easy
+Which database is file-based?,MySQL,PostgreSQL,SQLite,Oracle,C,SQL,Easy
+Which chart shows comparison?,Pie,Line,Bar,Scatter,C,CS,Easy
+Which method connects SQLite?,connect(),open(),attach(),link(),A,SQL,Easy
+Which Python library handles DB?,sqlite3,mysql,dbpy,pandas,A,Python,Easy
+Which loop checks condition first?,for,while,do-while,None,B,CS,Easy
+Which keyword defines block?,{},indentation,begin,end,B,Python,Easy
+Which OS is open-source?,Windows,macOS,Linux,DOS,C,CS,Easy
