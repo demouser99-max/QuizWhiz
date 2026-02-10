@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz {{ quiz_id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <main class="container quiz-page">
+    <section class="card">
+      <h1>Quiz Room: {{ quiz_id }}</h1>
+      <p class="muted">{% if is_host %}Host mode enabled{% else %}Join and play{% endif %}</p>
+
+      <div id="join-panel">
+        <label for="name-input">Name</label>
+        <input id="name-input" placeholder="Enter your name" maxlength="30" />
+        <button id="join-btn" class="btn">Join Quiz</button>
+      </div>
+
+      <div id="host-actions" class="hidden">
+        <button id="start-btn" class="btn success">Start Quiz</button>
+      </div>
+
+      <div id="status"></div>
+
+      <div id="question-panel" class="hidden">
+        <div class="question-head">
+          <h2 id="question-title"></h2>
+          <div id="timer">Time left: --</div>
+        </div>
+        <div id="options" class="options"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🏆 Live Leaderboard</h2>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Player</th><th>Score</th><th>Correct</th><th>Answered</th></tr>
+        </thead>
+        <tbody id="leaderboard-body">
+          <tr><td colspan="5" class="muted">No players yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    window.QUIZ_CONTEXT = {
+      quizId: "{{ quiz_id }}",
+      isHost: {{ 'true' if is_host else 'false' }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='quiz.js') }}"></script>
+</body>
+</html>

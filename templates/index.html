@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizWhiz</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>🎯 QuizWhiz</h1>
+      <p>Create a quiz instantly and share a join link.</p>
+      <button id="create-btn" class="btn">Create Quiz</button>
+      <div id="quiz-output" class="hidden">
+        <p><strong>Quiz ID:</strong> <span id="quiz-id"></span></p>
+        <p><strong>Invite Link:</strong> <a id="join-link" target="_blank"></a></p>
+        <p><strong>Host Link:</strong> <a id="host-link" target="_blank"></a></p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const createButton = document.getElementById("create-btn");
+    const output = document.getElementById("quiz-output");
+
+    createButton.addEventListener("click", async () => {
+      createButton.disabled = true;
+      createButton.textContent = "Creating...";
+
+      const response = await fetch("/create", { method: "POST" });
+      const data = await response.json();
+
+      document.getElementById("quiz-id").textContent = data.quiz_id;
+      const joinLink = document.getElementById("join-link");
+      joinLink.href = data.join_link;
+      joinLink.textContent = data.join_link;
+
+      const hostLink = document.getElementById("host-link");
+      hostLink.href = data.host_link;
+      hostLink.textContent = data.host_link;
+
+      output.classList.remove("hidden");
+      createButton.disabled = false;
+      createButton.textContent = "Create Another Quiz";
+    });
+  </script>
+</body>
+</html>
